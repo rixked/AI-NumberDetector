@@ -32,8 +32,11 @@ class NeuronalNetwork:
         change_ih = self.learningRate * np.outer(b,train_image)
         self.weight_ih = self.weight_ih + change_ih
 
-    def checkImage(self, test_image):
+    def getOutput(self, test_image):
         summen = np.dot(self.weight_ih, test_image)
         hidden = self.activationFct(summen)
         output = self.activationFct(np.dot(self.weight_ho, hidden))
-        return np.argmax(output)
+        return output
+
+    def checkImage(self, test_image):
+        return np.argmax(self.getOutput(test_image))
