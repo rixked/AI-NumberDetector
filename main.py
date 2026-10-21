@@ -1,6 +1,5 @@
 import nn
 import numpy as np
-import os
 
 # MNIST IDX files: images have a 16-byte header, labels an 8-byte header
 with open("train-images.idx3-ubyte", "rb") as f:
@@ -18,12 +17,18 @@ test_images = test_images/255
 print(train_images.shape, train_labels.shape)
 print(test_images.shape, test_labels.shape)
 
-netty = nn.NeuronalNetwork(784,128,10,0.00067)
+model = input("Which model? (nn / cnn) ").strip().lower()
+if model == "nn":
+    netty = nn.NeuronalNetwork(784,128,10,0.00067)
+    folder = "weights/nn"
+elif model == "cnn":
+    # TODO: create your CNN here once cnn.py is written (folder = "weights/cnn")
+    raise SystemExit("The CNN doesn't exist yet.")
+else:
+    raise SystemExit("Unknown model: " + model)
 
-if os.path.exists("weight_ih.npy") and os.path.exists("weight_ho.npy"):
-    netty.weight_ih = np.load("weight_ih.npy")
-    netty.weight_ho = np.load("weight_ho.npy")
-    print("loaded saved weights")
+if netty.load(folder):
+    print("loaded saved weights from", folder)
 else:
     print("no saved weights, starting from random weights")
 
@@ -43,5 +48,4 @@ for i in range(len(test_images)):
 print("correct:", correct, "of", len(test_images))
 print("accuracy:", correct / len(test_images) * 100, "%")
 
-np.save("weight_ih.npy",netty.weight_ih)
-np.save("weight_ho.npy",netty.weight_ho)
+netty.save(folder)

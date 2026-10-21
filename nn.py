@@ -1,4 +1,5 @@
 import numpy as np
+import os
 class NeuronalNetwork:
     def __init__(self, iNeuron, hNeuron, oNeuron, learningRate):
         self.iNeuron = iNeuron
@@ -40,3 +41,18 @@ class NeuronalNetwork:
 
     def checkImage(self, test_image):
         return np.argmax(self.getOutput(test_image))
+
+    def save(self, folder):
+        os.makedirs(folder, exist_ok=True)
+        np.save(os.path.join(folder, "weight_ih.npy"), self.weight_ih)
+        np.save(os.path.join(folder, "weight_ho.npy"), self.weight_ho)
+
+    def load(self, folder):
+        # returns False if nothing has been saved in this folder yet
+        ih = os.path.join(folder, "weight_ih.npy")
+        ho = os.path.join(folder, "weight_ho.npy")
+        if not (os.path.exists(ih) and os.path.exists(ho)):
+            return False
+        self.weight_ih = np.load(ih)
+        self.weight_ho = np.load(ho)
+        return True

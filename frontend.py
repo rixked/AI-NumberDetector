@@ -6,9 +6,17 @@ from matplotlib.widgets import Button
 SIZE = 280   # drawing canvas in pixels (10x MNIST)
 BRUSH = 12   # brush radius in canvas pixels
 
-netty = nn.NeuronalNetwork(784,128,10,0.1)
-netty.weight_ih = np.load("weight_ih.npy")
-netty.weight_ho = np.load("weight_ho.npy")
+MODEL = "nn"   # switch to "cnn" once the CNN exists
+
+if MODEL == "nn":
+    netty = nn.NeuronalNetwork(784,128,10,0.1)
+    folder = "weights/nn"
+else:
+    # TODO: create your CNN here once cnn.py is written (folder = "weights/cnn")
+    raise SystemExit("The CNN doesn't exist yet.")
+
+if not netty.load(folder):
+    raise SystemExit("No saved weights in " + folder + ", run main.py first.")
 
 canvas = np.zeros((SIZE, SIZE))
 yy, xx = np.mgrid[0:SIZE, 0:SIZE]
