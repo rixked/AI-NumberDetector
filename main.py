@@ -23,7 +23,7 @@ if model == "nn":
     netty = nn.NeuronalNetwork(784,128,10,0.00067)
     folder = "weights/nn"
 elif model == "cnn":
-    netty = cnn.ConvolutionalNeuralNetwork(8, 0.5, 0.05)
+    netty = cnn.ConvolutionalNeuralNetwork(8, 0.1, 0.025)
     folder = "weights/cnn"
 else:
     raise SystemExit("Unknown model: " + model)
