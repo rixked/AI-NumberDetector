@@ -1,7 +1,8 @@
 import numpy as np
 import nn
+import time
 
-SHOW_PLOT = False   # True: show the filters, feature maps and pooled maps
+SHOW_PLOT = True   # True: show the filters, feature maps and pooled maps
 
 
 def convolve(image, filters):
@@ -66,35 +67,61 @@ with open("t10k-images.idx3-ubyte", "rb") as f:
 with open("t10k-labels.idx1-ubyte", "rb") as f:
     test_labels = np.frombuffer(f.read(), dtype=np.uint8, offset=8)
 
+learningRate = 0.5          # dense part
+filtersLearningRate = 0.05  # filters
+
 filters = np.random.normal(0.0, pow(9, -0.5), (8, 3, 3))
+dense = nn.NeuronalNetwork(8 * 13 * 13, 128, 10, learningRate)
 
-# the small 5x5 example from the start: arr = np.array([[0, 0, 1, 0, 0], ...])
-arr = train_images[0]
+epochs = int(input("How many epochs? (one takes about an hour) "))
+start = time.time()
 
-kernel_map = convolve(arr, filters)
-pooled = maxPool(kernel_map)
-flat = features(arr, filters)
-print(filters.shape, kernel_map.shape, pooled.shape, flat.shape)
+for epoch in range(epochs):
+    for i in range(len(train_images)):
+        image = train_images[i]
 
-dense = nn.NeuronalNetwork(len(flat), 128, 10, 0.1)
-output = dense.getOutput(flat)
-print(output)
-print("guess:", np.argmax(output), "  correct:", train_labels[0])
+        # forward
+        kernel_map = convolve(image, filters)
+        pooled = maxPool(kernel_map)
+        flat = pooled.flatten()
 
-for i in range(2000):
-    dense.train(features(train_images[i],filters), train_labels[i])
+        # dense part learns and returns the error for flat
+        input_error = dense.train(flat, train_labels[i])
+
+        # backward through the CNN part
+        pooled_error = input_error.reshape(8,13,13)
+        map_error = maxPoolBackward( kernel_map , pooled_error)
+        filter_change = convolveBackward(image, filters, map_error)
+        filters = filters + filtersLearningRate * filter_change
+
+        if (i + 1) % 1000 == 0:
+            done = epoch * len(train_images) + i + 1
+            left = (time.time() - start) / done * (epochs * len(train_images) - done)
+            print("epoch", epoch + 1, "image", i + 1, "of", len(train_images),
+                  "  about", round(left / 60), "min left")
+
+# save everything, so an hour of training isn't lost
+dense.save("weights/cnn")
+np.save("weights/cnn/filters.npy", filters)
+print("saved to weights/cnn")
+
 correct = 0
-for i in range(500):
+for i in range(len(test_images)):
     guess = dense.checkImage(features(test_images[i],filters))
     if guess == test_labels[i]:
         correct = correct + 1
+    if (i + 1) % 2000 == 0:
+        print("tested", i + 1, "of", len(test_images))
 
-print("correct:", correct, "of 500")
-print("accuracy:", correct / 500 * 100, "%")
+print("correct:", correct, "of", len(test_images))
+print("accuracy:", correct / len(test_images) * 100, "%")
 
-
-    
 if SHOW_PLOT:
+    # the learned filters on the first training image
+    arr = train_images[0]
+    kernel_map = convolve(arr, filters)
+    pooled = maxPool(kernel_map)
+
     # one column per filter: the filter itself, its feature map, its pooled map
     import matplotlib.pyplot as plt
 

@@ -23,15 +23,17 @@ class NeuronalNetwork:
         output = self.activationFct(np.dot(self.weight_ho, hidden))
 
         output_error = fish - output
-        hidden_error = np.dot(self.weight_ho.T,output_error)
-
         a  = output_error * (output * (1 - output))
+        hidden_error = np.dot(self.weight_ho.T, a)
+
         change_ho = self.learningRate * np.outer(a,hidden)
         self.weight_ho = self.weight_ho + change_ho
 
         b = hidden_error * (hidden * (1 - hidden))
+        input_error = np.dot(self.weight_ih.T, b)
         change_ih = self.learningRate * np.outer(b,train_image)
         self.weight_ih = self.weight_ih + change_ih
+        return input_error
 
     def getOutput(self, test_image):
         summen = np.dot(self.weight_ih, test_image)

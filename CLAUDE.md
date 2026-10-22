@@ -3,10 +3,11 @@
 A neural network built from scratch with numpy that recognises handwritten digits (MNIST).
 
 - `nn.py`: the `NeuronalNetwork` class (784 → 128 → 10, sigmoid, `train`, `checkImage`, `save` / `load`)
-- `cnn.py`: the CNN, which I'm writing myself (empty so far)
+- `cnn.py`: the CNN: `convolve`, `maxPool`, `maxPoolBackward`, `convolveBackward`, `features` + class `ConvolutionalNeuralNetwork(filterCount, learningRate, filtersLearningRate)` with the same methods as the old network (accepts flat 784 or 28×28 images)
+- `cnn_playground.py`: my CNN workspace (still has its own copies of the four functions)
 - `main.py`: asks for the model (nn / cnn), loads its weights, trains for the chosen number of epochs, tests on 10,000 images, saves
 - `frontend.py`: draw a digit and let the network guess it (`MODEL` at the top picks the network)
-- `weights/nn/`: saved weights of the plain network (~96.8 % test accuracy); the CNN will save to `weights/cnn/`
+- `weights/nn/`: saved weights of the plain network (~96.8 % test accuracy); `weights/cnn/`: the CNN after 1 epoch (95.93 %)
 - Any model plugged into `main.py` / `frontend.py` needs `train`, `getOutput`, `checkImage`, `save(folder)` and `load(folder)`
 
 ## How to work with me (the user)
@@ -22,12 +23,13 @@ I'm building this project to learn how neural networks work.
 ## Status / next steps
 
 - Done: save/load weights, epochs, drawing frontend, loss functions (MSE) explained
-- Now: learning CNNs step by step in `cnn_playground.py` (will move to `cnn.py` once it works)
-  - Done: `convolve` (8 random 3×3 filters → 8×26×26), `maxPool` (→ 8×13×13), `features` (flatten → 1352), dense part = `nn.NeuronalNetwork(1352, 128, 10, 0.1)`
-  - Done: `maxPoolBackward` (error only to the max of each 2×2 block, via a mask), `convolveBackward` (filter change = sum over all positions of error × patch)
-  - Result so far: random filters, only the dense part trained on 2,000 images → 86.8 % on 500 test images (old network on the same data: ~84 %)
-  - Next: `train` in `nn.py` must return `input_error = np.dot(self.weight_ih.T, b)`, computed BEFORE `weight_ih` is updated. Then chain it: input_error → reshape (8, 13, 13) → `maxPoolBackward` → `convolveBackward` → `filters += learningRate * filter_change`
-  - Side note: the `hidden_error` line uses `output_error`; textbook-correct would be `np.dot(self.weight_ho.T, a)`. Could be tried and compared later
-- Later: vectorise the loops (~50–100× faster), maybe compare with PyTorch on the RTX 5070
+- Done: CNN works end to end (8 filters 3×3 → max pool → dense 1352 → 128 → 10), filters learn
+  - `nn.py` `train` returns `input_error`, and now uses the textbook `hidden_error = np.dot(self.weight_ho.T, a)` (gradient check: matches the numerical gradient). Side effect: smaller steps, so the old network may need a higher learning rate when retrained
+  - Settings: dense learning rate 0.5, filter learning rate 0.05
+  - 1 epoch (~45 min with loops) → 95.93 % on 10,000 test images (old network after 1 epoch: ~95 %)
+  - Frontend test: my own 1 (with hook) and 9 are still not recognised, an "American" 1 is. Cause: handwriting style missing in MNIST. Ideas: data augmentation, training on my own drawings
+- Goal: 99 %. Plan, one change at a time and measured: 1. vectorise, 2. ReLU after the convolution, 3. softmax + cross-entropy, 4. more filters (32), 5. several epochs with decreasing learning rate, 6. maybe a second conv layer
+- Now: vectorising, in `cnn.py`. So far: the idea of the patches matrix (im2col): all 3×3 patches as rows, (9, 9) for the 5×5 example, (676, 9) for MNIST. Next: build it with numpy, then convolution = one `np.dot` with the filters as (8, 9), check it against the loop version
+- Later: maybe compare with PyTorch on the RTX 5070 (gaming PC)
 - Study notes on the first network: https://claude.ai/code/artifact/0df8eb4a-7cc0-47e3-b975-684f6fff3228
 - Study notes on the CNN so far: https://claude.ai/artifact/LNjn9mCagKpDN8dVKrjePV

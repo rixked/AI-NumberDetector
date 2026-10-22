@@ -1,4 +1,5 @@
 import nn
+import cnn
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
@@ -6,14 +7,14 @@ from matplotlib.widgets import Button
 SIZE = 280   # drawing canvas in pixels (10x MNIST)
 BRUSH = 12   # brush radius in canvas pixels
 
-MODEL = "nn"   # switch to "cnn" once the CNN exists
+MODEL = "cnn"   # "nn" for the old network, "cnn" for the CNN
 
 if MODEL == "nn":
     netty = nn.NeuronalNetwork(784,128,10,0.1)
     folder = "weights/nn"
 else:
-    # TODO: create your CNN here once cnn.py is written (folder = "weights/cnn")
-    raise SystemExit("The CNN doesn't exist yet.")
+    netty = cnn.ConvolutionalNeuralNetwork(8, 0.5, 0.05)
+    folder = "weights/cnn"
 
 if not netty.load(folder):
     raise SystemExit("No saved weights in " + folder + ", run main.py first.")
@@ -68,7 +69,7 @@ def toMnist(img):
 
 
 fig = plt.figure(figsize=(12, 4.5))
-fig.canvas.manager.set_window_title("AI-NumberDetector")
+fig.canvas.manager.set_window_title("AI-NumberDetector (" + MODEL + ")")
 axDraw = fig.add_axes([0.03, 0.15, 0.3, 0.75])
 axSeen = fig.add_axes([0.37, 0.15, 0.25, 0.75])
 axBars = fig.add_axes([0.68, 0.15, 0.3, 0.75])

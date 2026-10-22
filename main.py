@@ -1,4 +1,5 @@
 import nn
+import cnn
 import numpy as np
 
 # MNIST IDX files: images have a 16-byte header, labels an 8-byte header
@@ -22,8 +23,8 @@ if model == "nn":
     netty = nn.NeuronalNetwork(784,128,10,0.00067)
     folder = "weights/nn"
 elif model == "cnn":
-    # TODO: create your CNN here once cnn.py is written (folder = "weights/cnn")
-    raise SystemExit("The CNN doesn't exist yet.")
+    netty = cnn.ConvolutionalNeuralNetwork(8, 0.5, 0.05)
+    folder = "weights/cnn"
 else:
     raise SystemExit("Unknown model: " + model)
 
