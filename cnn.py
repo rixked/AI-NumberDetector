@@ -58,6 +58,89 @@ def features(image, filters):
     return maxPool(convolve(image, filters)).flatten()
 
 
+# ---------------------------------------------------------------------------
+# Fast (vectorised) versions. They calculate exactly the same as the loop
+# versions above, but without Python loops. The loop versions stay as the
+# reference: compare_fast_and_loops() checks that both give the same results.
+# ---------------------------------------------------------------------------
+
+def patches(image, k):
+    # all k x k patches of the image as rows: (positions, k*k), e.g. (676, 9)
+    # same as: for r, for c: image[r:r + k, c:c + k].flatten()
+    windows = np.lib.stride_tricks.sliding_window_view(image, (k, k))  # (26, 26, 3, 3)
+    return windows.reshape(-1, k * k)
+
+
+def convolveFast(image, filters):
+    # every patch times every filter in ONE np.dot instead of three loops
+    k = len(filters[0])
+    size = len(image) - k + 1
+    flat_filters = filters.reshape(len(filters), -1)          # (8, 9)
+    result = np.dot(patches(image, k), flat_filters.T)        # (676, 9) . (9, 8) -> (676, 8)
+    return result.T.reshape(len(filters), size, size)         # (8, 26, 26)
+
+
+def poolBlocks(kernel_map):
+    # view the maps as 2x2 blocks: (filters, block row, 2, block column, 2)
+    f, s = len(kernel_map), len(kernel_map[0]) // 2
+    return kernel_map[:, :s * 2, :s * 2].reshape(f, s, 2, s, 2)
+
+
+def maxPoolFast(kernel_map):
+    # the maximum of every 2x2 block at once
+    return poolBlocks(kernel_map).max(axis=(2, 4))            # (8, 13, 13)
+
+
+def maxPoolBackwardFast(kernel_map, pooled_error):
+    # same mask trick as in maxPoolBackward, for all blocks at once
+    blocks = poolBlocks(kernel_map)
+    mask = blocks == blocks.max(axis=(2, 4), keepdims=True)
+    f, s = pooled_error.shape[0], pooled_error.shape[1]
+    map_error = np.zeros(kernel_map.shape)
+    map_error[:, :s * 2, :s * 2] = (mask * pooled_error[:, :, None, :, None]).reshape(f, s * 2, s * 2)
+    return map_error
+
+
+def convolveBackwardFast(image, filters, map_error):
+    # sum over all positions of error x patch = ONE np.dot
+    k = len(filters[0])
+    flat_error = map_error.reshape(len(filters), -1)          # (8, 676)
+    change = np.dot(flat_error, patches(image, k))            # (8, 676) . (676, 9) -> (8, 9)
+    return change.reshape(filters.shape)                      # (8, 3, 3)
+
+
+def featuresFast(image, filters):
+    return maxPoolFast(convolveFast(image, filters)).flatten()
+
+
+def compare_fast_and_loops():
+    # the fast versions must give the same results as the loop versions
+    import time
+    image = np.random.rand(28, 28)
+    filters = np.random.normal(0.0, pow(9, -0.5), (8, 3, 3))
+    kernel_map = convolve(image, filters)
+    pooled_error = np.random.rand(8, 13, 13)
+    map_error = maxPoolBackward(kernel_map, pooled_error)
+
+    checks = [
+        ("convolve", convolve(image, filters), convolveFast(image, filters)),
+        ("maxPool", maxPool(kernel_map), maxPoolFast(kernel_map)),
+        ("maxPoolBackward", map_error, maxPoolBackwardFast(kernel_map, pooled_error)),
+        ("convolveBackward", convolveBackward(image, filters, map_error),
+                             convolveBackwardFast(image, filters, map_error)),
+    ]
+    for name, loops, fast in checks:
+        print(name.ljust(18), "same result:", np.allclose(loops, fast),
+              "  largest difference:", np.abs(loops - fast).max())
+
+    for name, fn in [("loops", lambda: convolveBackward(image, filters, maxPoolBackward(convolve(image, filters), pooled_error))),
+                     ("fast", lambda: convolveBackwardFast(image, filters, maxPoolBackwardFast(convolveFast(image, filters), pooled_error)))]:
+        start = time.time()
+        for _ in range(20):
+            fn()
+        print(name.ljust(6), round((time.time() - start) / 20 * 1000, 2), "ms per image (forward + backward of the CNN part)")
+
+
 class ConvolutionalNeuralNetwork:
     def __init__(self, filterCount, learningRate, filtersLearningRate):
         self.filters = np.random.normal(0.0, pow(9, -0.5), (filterCount, 3, 3))
@@ -69,9 +152,9 @@ class ConvolutionalNeuralNetwork:
         # images may come flat (784) like in main.py, the filters need 28x28
         image = np.reshape(train_image, (28, 28))
 
-        # forward
-        kernel_map = convolve(image, self.filters)
-        pooled = maxPool(kernel_map)
+        # forward (fast versions, same maths as the loop versions)
+        kernel_map = convolveFast(image, self.filters)
+        pooled = maxPoolFast(kernel_map)
         flat = pooled.flatten()
 
         # dense part learns and returns the error for flat
@@ -79,13 +162,13 @@ class ConvolutionalNeuralNetwork:
 
         # backward through the CNN part
         pooled_error = input_error.reshape(pooled.shape)
-        map_error = maxPoolBackward(kernel_map, pooled_error)
-        filter_change = convolveBackward(image, self.filters, map_error)
+        map_error = maxPoolBackwardFast(kernel_map, pooled_error)
+        filter_change = convolveBackwardFast(image, self.filters, map_error)
         self.filters = self.filters + self.filtersLearningRate * filter_change
 
     def getOutput(self, test_image):
         image = np.reshape(test_image, (28, 28))
-        return self.dense.getOutput(features(image, self.filters))
+        return self.dense.getOutput(featuresFast(image, self.filters))
 
     def checkImage(self, test_image):
         return np.argmax(self.getOutput(test_image))
@@ -101,3 +184,7 @@ class ConvolutionalNeuralNetwork:
             return False
         self.filters = np.load(path)
         return True
+
+
+if __name__ == "__main__":
+    compare_fast_and_loops()

@@ -29,7 +29,8 @@ I'm building this project to learn how neural networks work.
   - 1 epoch (~45 min with loops) → 95.93 % on 10,000 test images (old network after 1 epoch: ~95 %)
   - Frontend test: my own 1 (with hook) and 9 are still not recognised, an "American" 1 is. Cause: handwriting style missing in MNIST. Ideas: data augmentation, training on my own drawings
 - Goal: 99 %. Plan, one change at a time and measured: 1. vectorise, 2. ReLU after the convolution, 3. softmax + cross-entropy, 4. more filters (32), 5. several epochs with decreasing learning rate, 6. maybe a second conv layer
-- Now: vectorising, in `cnn.py`. So far: the idea of the patches matrix (im2col): all 3×3 patches as rows, (9, 9) for the 5×5 example, (676, 9) for MNIST. Next: build it with numpy, then convolution = one `np.dot` with the filters as (8, 9), check it against the loop version
+- Done: vectorised (written by Claude on request, the loop versions stay in `cnn.py` as reference). `convolveFast` etc. use the patches matrix (im2col, (676, 9)) and one `np.dot`; `python cnn.py` compares fast vs loops (same results). The class uses the fast versions: one epoch ~30 s instead of ~45 min, full test < 1 s
+- Next: step 2 of the plan, ReLU after the convolution (learn it step by step again)
 - Later: maybe compare with PyTorch on the RTX 5070 (gaming PC)
 - Study notes on the first network: https://claude.ai/code/artifact/0df8eb4a-7cc0-47e3-b975-684f6fff3228
 - Study notes on the CNN so far: https://claude.ai/artifact/LNjn9mCagKpDN8dVKrjePV
